@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TinyTB-Net &bull; Scanner</title>
+<style>
+:root {
+  --bg: #070a12; --card: rgba(15, 23, 42, 0.75); --border: rgba(255, 255, 255, 0.08);
+  --primary: #38bdf8; --danger: #f43f5e; --success: #10b981; --muted: #94a3b8;
+  --glow: rgba(56,189,248,0.25); --orb1: rgba(56,189,248,0.22); --orb2: rgba(99,102,241,0.18); --meter: var(--primary);
+}
+body.is-tb {
+  --glow: rgba(244,63,94,0.25); --orb1: rgba(244,63,94,0.28); --orb2: rgba(225,29,72,0.2); --meter: var(--danger);
+}
+body.is-healthy {
+  --glow: rgba(16,185,129,0.25); --orb1: rgba(16,185,129,0.28); --orb2: rgba(5,150,105,0.2); --meter: var(--success);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+body {
+  background: var(--bg); color: #f8fafc; min-height: 100vh;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 20px 16px; overflow-x: hidden; position: relative;
+}
+.bg-mesh { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+.bg-grid {
+  position: absolute; inset: -48px;
+  background-image: radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px);
+  background-size: 24px 24px;
+  mask-image: radial-gradient(circle, #000 40%, transparent 80%);
+  -webkit-mask-image: radial-gradient(circle, #000 40%, transparent 80%);
+  animation: gridShift 36s linear infinite;
+}
+@keyframes gridShift { from { transform: translate(0,0); } to { transform: translate(24px, 24px); } }
+
+.floating-orb {
+  position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.45;
+  transition: all 1.2s cubic-bezier(0.16, 1, 0.3, 1); pointer-events: none;
+}
+.orb-1 {
+  width: 440px; height: 440px; top: -10%; left: 8%;
+  background: radial-gradient(circle, var(--orb1) 0%, transparent 70%);
+  animation: orbDrift 22s ease-in-out infinite alternate;
+}
+.orb-2 {
+  width: 400px; height: 400px; bottom: -8%; right: 10%;
+  background: radial-gradient(circle, var(--orb2) 0%, transparent 70%);
+  animation: orbDrift 26s ease-in-out infinite alternate-reverse;
+}
+@keyframes orbDrift {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(40px, 30px) scale(1.08); }
+  100% { transform: translate(-30px, 50px) scale(0.95); }
+}
+
+.ambient-glow {
+  position: absolute; width: 380px; height: 380px;
+  background: radial-gradient(circle, var(--glow) 0%, rgba(7,10,18,0) 70%);
+  border-radius: 50%; pointer-events: none; z-index: 0;
+  transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1); filter: blur(45px);
+}
+.scanner-card {
+  position: relative; z-index: 1; width: 100%; max-width: 420px;
+  background: var(--card); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--border); border-radius: 24px; padding: 28px 24px;
+  box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.65);
+  display: flex; flex-direction: column; align-items: center; transition: border-color 0.5s ease;
+}
+
+body.is-tb .ambient-glow, body.is-healthy .ambient-glow { transform: scale(1.15); }
+body.is-tb .scanner-card { border-color: rgba(244,63,94,0.4); }
+body.is-tb .status-pill { background: rgba(244,63,94,0.14); color: #fca5a5; border-color: rgba(244,63,94,0.35); }
+body.is-healthy .scanner-card { border-color: rgba(16,185,129,0.4); }
+body.is-healthy .status-pill { background: rgba(16,185,129,0.14); color: #6ee7b7; border-color: rgba(16,185,129,0.35); }
+
+header { text-align: center; margin-bottom: 20px; }
+.badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border);
+  padding: 4px 12px; border-radius: 999px; font-size: 11px; font-weight: 600;
+  letter-spacing: 0.8px; text-transform: uppercase; color: var(--primary); margin-bottom: 8px;
+}
+.badge-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--primary); box-shadow: 0 0 8px var(--primary); animation: pulseDot 2s infinite ease-in-out; }
+@keyframes pulseDot { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; color: #fff; }
+
+.viewport-frame {
+  position: relative; width: 224px; height: 224px; border-radius: 18px; overflow: hidden;
+  background: #020408; border: 1.5px dashed var(--border);
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.viewport-frame:hover { border-color: var(--primary); background: #050811; }
+.viewport-frame.has-image { border-style: solid; border-color: var(--border); }
+
+.drop-placeholder { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 16px; color: var(--muted); pointer-events: none; }
+.drop-icon { width: 44px; height: 44px; border-radius: 12px; background: rgba(56, 189, 248, 0.08); display: flex; align-items: center; justify-content: center; margin-bottom: 10px; }
+.drop-placeholder p { font-size: 13px; font-weight: 500; color: #e2e8f0; }
+.drop-placeholder span { font-size: 11px; color: #64748b; margin-top: 4px; }
+
+canvas#cxrCanvas { position: absolute; top: 0; left: 0; width: 224px; height: 224px; display: none; }
+.laser-beam {
+  position: absolute; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, #38bdf8, transparent);
+  box-shadow: 0 0 16px 2px #38bdf8; opacity: 0; pointer-events: none; z-index: 10;
+}
+.viewport-frame.scanning .laser-beam { opacity: 1; animation: laserSweep 1.4s ease-in-out infinite alternate; }
+@keyframes laserSweep { 0% { top: 0%; } 100% { top: 98%; } }
+
+input[type="file"] { display: none; }
+.sample-bar { display: flex; gap: 8px; margin-top: 14px; width: 100%; justify-content: center; }
+.sample-pill {
+  background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border);
+  padding: 6px 12px; border-radius: 8px; font-size: 11px; font-weight: 500;
+  color: var(--muted); cursor: pointer; transition: all 0.2s ease;
+}
+.sample-pill:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
+.sample-pill.sick:hover { border-color: rgba(244, 63, 94, 0.4); color: #fca5a5; }
+.sample-pill.clean:hover { border-color: rgba(16, 185, 129, 0.4); color: #6ee7b7; }
+
+.btn-scan {
+  margin-top: 18px; width: 100%; padding: 13px; border-radius: 14px; border: none;
+  background: #38bdf8; color: #070a12; font-size: 14px; font-weight: 700; cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1); box-shadow: 0 4px 16px rgba(56, 189, 248, 0.25);
+}
+.btn-scan:disabled { opacity: 0.3; cursor: not-allowed; box-shadow: none; background: rgba(255, 255, 255, 0.1); color: #64748b; }
+.btn-scan:hover:not(:disabled) { background: #7dd3fc; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(56, 189, 248, 0.35); }
+
+.result-stage {
+  display: none; width: 100%; flex-direction: column; align-items: center; margin-top: 20px;
+  animation: fadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+.gauge-wrap { position: relative; width: 124px; height: 124px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; }
+.gauge-svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.gauge-bg { fill: none; stroke: rgba(255, 255, 255, 0.06); stroke-width: 8; }
+.gauge-meter {
+  fill: none; stroke: var(--meter); stroke-width: 8; stroke-linecap: round;
+  stroke-dasharray: 339.29; stroke-dashoffset: 339.29;
+  transition: stroke-dashoffset 1.4s cubic-bezier(0.16, 1, 0.3, 1), stroke 0.5s ease;
+}
+.gauge-center { position: absolute; display: flex; flex-direction: column; align-items: center; }
+.gauge-number { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; font-variant-numeric: tabular-nums; line-height: 1; }
+.gauge-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-top: 4px; }
+.status-pill { display: inline-flex; align-items: center; gap: 8px; padding: 7px 16px; border-radius: 999px; font-size: 12px; font-weight: 700; transition: all 0.3s ease; border: 1px solid transparent; }
+.reset-btn { margin-top: 14px; background: none; border: none; color: var(--muted); font-size: 12px; cursor: pointer; text-decoration: underline; }
+.reset-btn:hover { color: #fff; }
+footer { margin-top: 20px; font-size: 11px; color: #475569; letter-spacing: 0.4px; z-index: 1; }
+</style>
+</head>
+<body>
+<div class="bg-mesh">
+  <div class="bg-grid"></div>
+  <div class="floating-orb orb-1"></div>
+  <div class="floating-orb orb-2"></div>
+</div>
+<div class="ambient-glow"></div>
+<div class="scanner-card">
+  <header>
+    <div class="badge"><span class="badge-dot"></span>TinyTB-Net &bull; Edge AI</div>
+    <h1>Radiograph Screening</h1>
+  </header>
+  <div class="viewport-frame" id="viewportFrame" onclick="$('fileInput').click()">
+    <div class="laser-beam"></div>
+    <div class="drop-placeholder" id="dropPlaceholder">
+      <div class="drop-icon"><svg viewBox="0 0 24 24" width="22" height="22" stroke="var(--primary)" fill="none" stroke-width="2"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>
+      <p>Drop Chest X-Ray</p>
+      <span>or click to browse</span>
+    </div>
+    <canvas id="cxrCanvas" width="224" height="224"></canvas>
+  </div>
+  <input type="file" id="fileInput" accept="image/*">
+  <div class="sample-bar">
+    <button type="button" class="sample-pill sick" onclick="loadSample('/sample/CHNCXR_0404_1.png')">Test Sick TB</button>
+    <button type="button" class="sample-pill clean" onclick="loadSample('/sample/CHNCXR_0001_0.png')">Test Healthy</button>
+  </div>
+  <button class="btn-scan" id="btnScan" disabled onclick="runInference()">Analyze Radiograph</button>
+  <div class="result-stage" id="resultStage">
+    <div class="gauge-wrap">
+      <svg class="gauge-svg" viewBox="0 0 120 120">
+        <circle class="gauge-bg" cx="60" cy="60" r="54"></circle>
+        <circle class="gauge-meter" id="gaugeMeter" cx="60" cy="60" r="54"></circle>
+      </svg>
+      <div class="gauge-center">
+        <span class="gauge-number" id="gaugeNumber">0%</span>
+        <span class="gauge-label">TB Risk</span>
+      </div>
+    </div>
+    <div class="status-pill" id="statusPill"><span id="statusText">Analyzing</span></div>
+    <button type="button" class="reset-btn" onclick="resetScan()">Scan Another Image</button>
+  </div>
+</div>
+<footer>Offline ESP32 Microcontroller AI &bull; No Internet Required</footer>
+<script>
+const $ = id => document.getElementById(id);
+let rawGrayscaleBytes = null;
+const canvas = $("cxrCanvas"), ctx = canvas.getContext("2d"), fileInput = $("fileInput"), btnScan = $("btnScan");
+const viewportFrame = $("viewportFrame"), dropPlaceholder = $("dropPlaceholder"), resultStage = $("resultStage");
+const gaugeMeter = $("gaugeMeter"), gaugeNumber = $("gaugeNumber"), statusText = $("statusText");
+const CIRCUMFERENCE = 2 * Math.PI * 54;
+
+fileInput.onchange = e => { if (e.target.files && e.target.files[0]) processImage(e.target.files[0]); };
+viewportFrame.ondragover = e => { e.preventDefault(); viewportFrame.style.borderColor = "var(--primary)"; };
+viewportFrame.ondragleave = () => { viewportFrame.style.borderColor = "var(--border)"; };
+viewportFrame.ondrop = e => {
+  e.preventDefault(); viewportFrame.style.borderColor = "var(--border)";
+  if (e.dataTransfer.files && e.dataTransfer.files[0]) processImage(e.dataTransfer.files[0]);
+};
+
+function processImage(file) {
+  const reader = new FileReader();
+  reader.onload = e => renderToCanvas(e.target.result);
+  reader.readAsDataURL(file);
+}
+
+function loadSample(url) { renderToCanvas(url); }
+
+function renderToCanvas(src) {
+  const img = new Image();
+  img.crossOrigin = "anonymous";
+  img.onload = () => {
+    ctx.drawImage(img, 0, 0, 224, 224);
+    const imgData = ctx.getImageData(0, 0, 224, 224);
+    const d = imgData.data;
+    rawGrayscaleBytes = new Uint8Array(224 * 224);
+    for (let i = 0, j = 0; i < d.length; i += 4, j++) {
+      const gray = Math.round(0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2]);
+      d[i] = d[i+1] = d[i+2] = gray;
+      rawGrayscaleBytes[j] = gray;
+    }
+    ctx.putImageData(imgData, 0, 0);
+    dropPlaceholder.style.display = "none";
+    canvas.style.display = "block";
+    viewportFrame.classList.add("has-image");
+    btnScan.disabled = false;
+    resultStage.style.display = "none";
+    resetVisualState();
+  };
+  img.src = src;
+}
+
+function resetVisualState() {
+  document.body.className = "";
+  gaugeMeter.style.strokeDashoffset = CIRCUMFERENCE;
+  gaugeNumber.textContent = "0%";
+}
+
+function resetScan() {
+  rawGrayscaleBytes = null;
+  canvas.style.display = "none";
+  dropPlaceholder.style.display = "flex";
+  viewportFrame.classList.remove("has-image", "scanning");
+  btnScan.disabled = true;
+  btnScan.textContent = "Analyze Radiograph";
+  resultStage.style.display = "none";
+  resetVisualState();
+}
+
+async function runInference() {
+  if (!rawGrayscaleBytes) return;
+  btnScan.disabled = true;
+  btnScan.textContent = "Scanning Radiograph...";
+  viewportFrame.classList.add("scanning");
+  resultStage.style.display = "none";
+  resetVisualState();
+
+  const minScanDelay = new Promise(r => setTimeout(r, 800));
+  try {
+    const fetchP = fetch("/predict?threshold=0.35", {
+      method: "POST", headers: { "Content-Type": "application/octet-stream" }, body: rawGrayscaleBytes
+    }).then(res => res.json());
+
+    const [_, data] = await Promise.all([minScanDelay, fetchP]);
+    displayResult(data);
+  } catch (err) {
+    alert("Inference error: " + err.message);
+  } finally {
+    viewportFrame.classList.remove("scanning");
+    btnScan.disabled = false;
+    btnScan.textContent = "Re-Analyze";
+  }
+}
+
+function displayResult(data) {
+  resultStage.style.display = "flex";
+  const prob = data.probability;
+  const isTB = prob >= 0.35;
+  document.body.className = isTB ? "is-tb" : "is-healthy";
+  statusText.textContent = isTB ? "Tuberculosis Suspected" : "Normal \u2022 Cleared";
+  gaugeMeter.style.strokeDashoffset = CIRCUMFERENCE - (prob * CIRCUMFERENCE);
+  animateCounter(prob * 100);
+}
+
+function animateCounter(targetPercent) {
+  const duration = 1200, startTime = performance.now();
+  function step(currentTime) {
+    const elapsed = currentTime - startTime;
+    const progress = Math.min(elapsed / duration, 1.0);
+    const easeProgress = 1 - Math.pow(2, -10 * progress);
+    gaugeNumber.textContent = (targetPercent * easeProgress).toFixed(1) + "%";
+    if (progress < 1.0) requestAnimationFrame(step);
+    else gaugeNumber.textContent = targetPercent.toFixed(1) + "%";
+  }
+  requestAnimationFrame(step);
+}
+</script>
+</body>
+</html>

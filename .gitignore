@@ -1,0 +1,45 @@
+# Article & Editorial Assets (excluded per user request)
+assets/
+article*.md
+article_subjects.md
+formulas.md
+formulas.tex
+esp_32_tuberculosis.jpeg
+test_infographic.py
+test_seesaw.py
+test_simple_tradeoff.py
+test_simple_tradeoff.png
+scripts/generate_article_assets.py
+scripts/capture_web_ui.js
+.agents/
+data/hardware_teaser_photo.png
+data/web_ui_device_photo.png
+data/whiteboard_assets/
+
+# Large Datasets & Raw Images
+data/belarus.zip
+data/images/
+
+# Python & Environment
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.ruff_cache/
+
+# Firmware & C++ Builds
+firmware/.pio/
+test_engine_c
+test_infer_compile
+*.o
+*.bin
+*.elf
+
+# OS & Editor
+.DS_Store
+.vscode/
+.idea/
